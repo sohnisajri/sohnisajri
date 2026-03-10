@@ -386,31 +386,52 @@
 
     var parsed = [];
 
-    // JSONP from Apps Script — no CORS issues
-    try {
-      parsed = await new Promise(function(resolve, reject) {
-        var cb = '__cb_' + Date.now();
-        var done = false;
-        var t = setTimeout(function() {
-          if (!done) { done = true; delete window[cb]; reject(new Error('timeout')); }
-        }, 12000);
-        window[cb] = function(data) {
-          if (!done) {
-            done = true;
-            clearTimeout(t);
-            delete window[cb];
-            resolve((data && data.products) ? data.products : []);
-          }
-        };
-        var s = document.createElement('script');
-        s.src = AS + '?type=products&callback=' + cb;
-        s.onerror = function() {
-          if (!done) { done = true; clearTimeout(t); delete window[cb]; reject(new Error('script error')); }
-        };
-        document.head.appendChild(s);
-      });
-    } catch(e) {
-      console.log('Sheet load error:', e.message);
+    // Try fetch with no-cors won't work, try regular fetch first
+    // Apps Script with JSONP callback returns JS mime type which fetch can read
+    var attempts = [
+      AS + '?type=products',
+      AS + '?type=products&callback=__dummy'
+    ];
+
+    for (var ai = 0; ai < attempts.length; ai++) {
+      try {
+        var resp = await fetch(attempts[ai], {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        var text = await resp.text();
+        // Strip JSONP wrapper if present
+        text = text.trim();
+        if (text.startsWith('__dummy(')) {
+          text = text.slice(8, -1);
+        } else if (text.includes('(') && text.endsWith(')')) {
+          text = text.slice(text.indexOf('(') + 1, -1);
+        }
+        var data = JSON.parse(text);
+        if (data && data.products && data.products.length) {
+          parsed = data.products;
+          break;
+        }
+      } catch(e) {
+        console.log('Attempt ' + ai + ' failed:', e.message);
+      }
+    }
+
+    // JSONP fallback if fetch failed
+    if (!parsed.length) {
+      try {
+        parsed = await new Promise(function(resolve, reject) {
+          var cb = '__cb' + Date.now();
+          var t = setTimeout(function(){ delete window[cb]; reject(new Error('timeout')); }, 12000);
+          window[cb] = function(d) { clearTimeout(t); delete window[cb]; resolve(d && d.products ? d.products : []); };
+          var s = document.createElement('script');
+          s.src = AS + '?type=products&callback=' + cb;
+          s.onerror = function(){ clearTimeout(t); delete window[cb]; reject(new Error('load error')); };
+          document.head.appendChild(s);
+        });
+      } catch(e) {
+        console.log('JSONP failed:', e.message);
+      }
     }
 
     allProducts = parsed;
