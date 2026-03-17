@@ -379,6 +379,36 @@
   var modalImages = [];
   var modalIdx = 0;
 
+  function getImages(p) {
+    if (p.images && p.images.trim()) {
+      return p.images.replace(/[\n\r]/g, '').split('|')
+        .map(function(s){ return s.trim(); })
+        .filter(function(s){ return s.length > 10; });
+    }
+    return ['image','image2','image3','image4','image5','image6','image7','image8']
+      .map(function(k){ return p[k]; }).filter(Boolean);
+  }
+
+  function productCard(p, idx) {
+    var imgs = getImages(p);
+    var thumb = imgs[0] || '';
+    var countBadge = imgs.length > 1 ? '<span class="product-img-count">&#128247; ' + imgs.length + '</span>' : '';
+    var imgHtml = thumb
+      ? '<img src="' + thumb + '" alt="' + p.name + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"/><div class="product-placeholder" style="display:none">🌸</div>'
+      : '<div class="product-placeholder">🌸</div>';
+    var amazonBadge = p.amazon ? '<span class="btn-amazon">&#128722; Amazon</span>' : '';
+    return '<div class="product-card" onclick="openModal(' + idx + ')">' +
+      '<div class="product-img-wrap">' + imgHtml + (p.badge?'<span class="product-badge">'+p.badge+'</span>':'') + countBadge + '</div>' +
+      '<div class="product-info">' +
+        (p.category?'<p class="product-cat">'+p.category+'</p>':'') +
+        '<h3 class="product-name">'+p.name+'</h3>' +
+        (p.description?'<p class="product-desc">'+p.description+'</p>':'') +
+        '<div class="product-footer"><span class="product-price">'+(p.price||'')+'</span>' +
+        '<div class="product-actions">' + amazonBadge + '<span class="btn-whatsapp">View &rarr;</span></div></div>' +
+      '</div></div>';
+  }
+
+
   // ── LOAD PRODUCTS ────────────────────────────────────────
   // Reads directly from Google Sheets published CSV — no Apps Script needed.
   // Uses the correct gid for the Products tab.
@@ -502,6 +532,7 @@
     if (socials[2] && t['WhatsApp Link']) socials[2].href = t['WhatsApp Link'];
   }
 
+
   function buildFilters() {
     var cats = ['all'];
     allProducts.forEach(function(p){ if (p.category && cats.indexOf(p.category)===-1) cats.push(p.category); });
@@ -540,24 +571,6 @@
   }
 
   // ── PRODUCT CARD ─────────────────────────────────────────
-  function productCard(p, idx) {
-    var imgs = getImages(p);
-    var thumb = imgs[0] || '';
-    var countBadge = imgs.length > 1 ? '<span class="product-img-count">&#128247; ' + imgs.length + '</span>' : '';
-    var imgHtml = thumb
-      ? '<img src="' + thumb + '" alt="' + p.name + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"/><div class="product-placeholder" style="display:none">🌸</div>'
-      : '<div class="product-placeholder">🌸</div>';
-    var amazonBadge = p.amazon ? '<span class="btn-amazon">&#128722; Amazon</span>' : '';
-    return '<div class="product-card" onclick="openModal(' + idx + ')">' +
-      '<div class="product-img-wrap">' + imgHtml + (p.badge?'<span class="product-badge">'+p.badge+'</span>':'') + countBadge + '</div>' +
-      '<div class="product-info">' +
-        (p.category?'<p class="product-cat">'+p.category+'</p>':'') +
-        '<h3 class="product-name">'+p.name+'</h3>' +
-        (p.description?'<p class="product-desc">'+p.description+'</p>':'') +
-        '<div class="product-footer"><span class="product-price">'+(p.price||'')+'</span>' +
-        '<div class="product-actions">' + amazonBadge + '<span class="btn-whatsapp">View &rarr;</span></div></div>' +
-      '</div></div>';
-  }
 
   // ── MODAL ────────────────────────────────────────────────
   function openModal(idx) {
