@@ -379,14 +379,25 @@
   var modalImages = [];
   var modalIdx = 0;
 
+  function fixDriveUrl(url) {
+    url = (url||'').trim();
+    if (!url) return url;
+    // Extract file ID and convert to thumbnail URL — works reliably in img tags
+    var m = url.match(/id=([a-zA-Z0-9_-]{10,})/);
+    if (!m) m = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+    if (!m) m = url.match(/thumbnail\?id=([a-zA-Z0-9_-]{10,})/);
+    if (m) return 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w800';
+    return url;
+  }
+
   function getImages(p) {
     if (p.images && p.images.trim()) {
       return p.images.replace(/[\n\r]/g, '').split('|')
-        .map(function(s){ return s.trim(); })
+        .map(function(s){ return fixDriveUrl(s); })
         .filter(function(s){ return s.length > 10; });
     }
     return ['image','image2','image3','image4','image5','image6','image7','image8']
-      .map(function(k){ return p[k]; }).filter(Boolean);
+      .map(function(k){ return p[k]; }).filter(Boolean).map(fixDriveUrl);
   }
 
   function productCard(p, idx) {
