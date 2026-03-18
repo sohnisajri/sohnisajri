@@ -405,9 +405,10 @@
 
   function getImages(p) {
     if (p.images && p.images.trim()) {
-      return p.images.replace(/[\n\r]/g, '').split('|')
-        .map(function(s){ return fixDriveUrl(s); })
-        .filter(function(s){ return s.length > 10; });
+      // Strip ALL whitespace chars including \n \r \t then split on pipe
+      return p.images.replace(/[\n\r\t]/g, '').split('|')
+        .map(function(s){ return fixDriveUrl(s.trim()); })
+        .filter(function(s){ return s.startsWith('http'); });
     }
     return ['image','image2','image3','image4','image5','image6','image7','image8']
       .map(function(k){ return p[k]; }).filter(Boolean).map(fixDriveUrl);
