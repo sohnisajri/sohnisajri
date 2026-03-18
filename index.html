@@ -431,7 +431,7 @@
     var thumb = imgs[0] || '';
     var countBadge = imgs.length > 1 ? '<span class="product-img-count">&#128247; ' + imgs.length + '</span>' : '';
     var imgHtml = thumb
-      ? '<img src="' + thumb + '" alt="' + p.name + '" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="product-placeholder" style="display:none">🌸</div>'
+      ? '<img src="' + thumb + '" alt="' + p.name + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"/><div class="product-placeholder" style="display:none">🌸</div>'
       : '<div class="product-placeholder">🌸</div>';
     var amazonBadge = p.amazon && p.amazon.length > 4 ? '<span class="btn-amazon">&#128722; Amazon</span>' : '';
     var pr = formatPrice(p);
