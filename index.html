@@ -91,6 +91,12 @@
     .product-desc{font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:12px;}
     .product-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
     .product-price{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--maroon);font-weight:400;}
+    .product-mrp{font-size:0.78rem;color:var(--muted);text-decoration:line-through;margin-right:6px;}
+    .product-discount{font-size:0.72rem;color:#2e7d32;font-weight:500;letter-spacing:0.05em;}
+    .price-wrap{display:flex;flex-direction:column;gap:2px;}
+    .price-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+    .modal-mrp{font-size:1rem;color:var(--muted);text-decoration:line-through;margin-left:12px;}
+    .modal-discount{font-size:0.85rem;color:#2e7d32;font-weight:500;margin-left:8px;}
     .product-actions{display:flex;gap:8px;align-items:center;}
     .btn-whatsapp{font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(201,168,76,0.4);padding-bottom:2px;white-space:nowrap;}
     .btn-amazon{display:inline-flex;align-items:center;gap:4px;font-size:0.65rem;text-transform:uppercase;background:#FF9900;color:#111;text-decoration:none;padding:4px 9px;font-weight:500;transition:background 0.2s;white-space:nowrap;}
@@ -407,190 +413,45 @@
       .map(function(k){ return p[k]; }).filter(Boolean).map(fixDriveUrl);
   }
 
+  function formatPrice(p) {
+    var sp = p.price ? (p.price.includes('₹') ? p.price : '₹' + p.price) : '';
+    var mp = p.mrp ? (p.mrp.includes('₹') ? p.mrp : '₹' + p.mrp) : '';
+    var disc = '';
+    if (sp && mp) {
+      var spNum = parseFloat(sp.replace(/[^0-9.]/g, ''));
+      var mpNum = parseFloat(mp.replace(/[^0-9.]/g, ''));
+      if (mpNum > spNum) disc = Math.round((mpNum - spNum) / mpNum * 100) + '% off';
+    }
+    return { sp: sp, mp: mp, disc: disc };
+  }
+
   function productCard(p, idx) {
     var imgs = getImages(p);
     var thumb = imgs[0] || '';
     var countBadge = imgs.length > 1 ? '<span class="product-img-count">&#128247; ' + imgs.length + '</span>' : '';
     var imgHtml = thumb
-      ? '<img src="' + thumb + '" alt="' + p.name + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"/><div class="product-placeholder" style="display:none">🌸</div>'
+      ? '<img src="' + thumb + '" alt="' + p.name + '" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div class="product-placeholder" style="display:none">🌸</div>'
       : '<div class="product-placeholder">🌸</div>';
-    var amazonBadge = p.amazon ? '<span class="btn-amazon">&#128722; Amazon</span>' : '';
+    var amazonBadge = p.amazon && p.amazon.length > 4 ? '<span class="btn-amazon">&#128722; Amazon</span>' : '';
+    var pr = formatPrice(p);
+    var priceHtml = '<div class="price-wrap">' +
+      '<div class="price-row"><span class="product-price">' + pr.sp + '</span>' +
+      (pr.mp ? '<span class="product-mrp">' + pr.mp + '</span>' : '') + '</div>' +
+      (pr.disc ? '<span class="product-discount">' + pr.disc + '</span>' : '') +
+      '</div>';
     return '<div class="product-card" onclick="openModal(' + idx + ')">' +
-      '<div class="product-img-wrap">' + imgHtml + (p.badge?'<span class="product-badge">'+p.badge+'</span>':'') + countBadge + '</div>' +
+      '<div class="product-img-wrap">' + imgHtml +
+      (p.badge ? '<span class="product-badge">' + p.badge + '</span>' : '') + countBadge + '</div>' +
       '<div class="product-info">' +
-        (p.category?'<p class="product-cat">'+p.category+'</p>':'') +
-        '<h3 class="product-name">'+p.name+'</h3>' +
-        (p.description?'<p class="product-desc">'+p.description+'</p>':'') +
-        '<div class="product-footer"><span class="product-price">'+(p.price?(p.price.includes('₹')?p.price:'₹'+p.price):'')+'</span>' +
-        '<div class="product-actions">' + amazonBadge + '<span class="btn-whatsapp">View &rarr;</span></div></div>' +
+      (p.category ? '<p class="product-cat">' + p.category + '</p>' : '') +
+      '<h3 class="product-name">' + p.name + '</h3>' +
+      (p.description ? '<p class="product-desc">' + p.description + '</p>' : '') +
+      '<div class="product-footer">' + priceHtml +
+      '<div class="product-actions">' + amazonBadge + '<span class="btn-whatsapp">View &rarr;</span></div></div>' +
       '</div></div>';
   }
 
 
-  // ── LOAD PRODUCTS ────────────────────────────────────────
-  // Reads directly from Google Sheets published CSV — no Apps Script needed.
-  // Uses the correct gid for the Products tab.
-  async function loadProducts() {
-    var container = document.getElementById('productContainer');
-    container.innerHTML = '<div class="products-loading"><div class="loading-spinner"></div><p class="loading-text">Loading collection&hellip;</p></div>';
-
-    var parsed = [];
-
-    // Try fetch with no-cors won't work, try regular fetch first
-    // Apps Script with JSONP callback returns JS mime type which fetch can read
-    var attempts = [
-      AS + '?type=products',
-      AS + '?type=products&callback=__dummy'
-    ];
-
-    for (var ai = 0; ai < attempts.length; ai++) {
-      try {
-        var resp = await fetch(attempts[ai], {
-          method: 'GET',
-          redirect: 'follow'
-        });
-        var text = await resp.text();
-        // Strip JSONP wrapper if present
-        text = text.trim();
-        if (text.startsWith('__dummy(')) {
-          text = text.slice(8, -1);
-        } else if (text.includes('(') && text.endsWith(')')) {
-          text = text.slice(text.indexOf('(') + 1, -1);
-        }
-        var data = JSON.parse(text);
-        if (data && data.products && data.products.length) {
-          parsed = data.products;
-          break;
-        }
-      } catch(e) {
-        console.log('Attempt ' + ai + ' failed:', e.message);
-      }
-    }
-
-    // JSONP fallback if fetch failed
-    if (!parsed.length) {
-      try {
-        parsed = await new Promise(function(resolve, reject) {
-          var cb = '__cb' + Date.now();
-          var t = setTimeout(function(){ delete window[cb]; reject(new Error('timeout')); }, 12000);
-          window[cb] = function(d) { clearTimeout(t); delete window[cb]; resolve(d && d.products ? d.products : []); };
-          var s = document.createElement('script');
-          s.src = AS + '?type=products&callback=' + cb;
-          s.onerror = function(){ clearTimeout(t); delete window[cb]; reject(new Error('load error')); };
-          document.head.appendChild(s);
-        });
-      } catch(e) {
-        console.log('JSONP failed:', e.message);
-      }
-    }
-
-    allProducts = parsed;
-    buildFilters();
-
-    if (allProducts.length) {
-      container.innerHTML = '<div class="product-grid">' + allProducts.map(function(p,i){ return productCard(p,i); }).join('') + '</div>';
-    } else {
-      container.innerHTML = '<div class="products-empty"><strong>Coming Soon</strong>Our collection will appear here shortly.</div>';
-    }
-  }
-
-  // ── APPLY WEBSITE TEXT FROM SHEET ───────────────────────
-  function applyText(t) {
-    function set(sel, val) {
-      var el = document.querySelector(sel);
-      if (el && val) el.textContent = val;
-    }
-    // Nav
-    set('.nav-cta', t['Shop Now Button']);
-    set('.hero-tag', t['Tag Line']);
-    set('.hero-sub', t['Subtext']);
-    set('.hero-btns .btn-primary', t['Button 1']);
-    set('.hero-btns .btn-outline', t['Button 2']);
-    // About
-    var aboutParas = document.querySelectorAll('.about-text');
-    if (aboutParas[0] && t['Paragraph 1']) aboutParas[0].textContent = t['Paragraph 1'];
-    if (aboutParas[1] && t['Paragraph 2']) aboutParas[1].textContent = t['Paragraph 2'];
-    var valTitles = document.querySelectorAll('.value-title');
-    var valDescs = document.querySelectorAll('.value-desc');
-    [['Value 1 Title','Value 1 Description'],['Value 2 Title','Value 2 Description'],
-     ['Value 3 Title','Value 3 Description'],['Value 4 Title','Value 4 Description']
-    ].forEach(function(pair,i){
-      if (valTitles[i] && t[pair[0]]) valTitles[i].textContent = t[pair[0]];
-      if (valDescs[i] && t[pair[1]]) valDescs[i].textContent = t[pair[1]];
-    });
-    // Collections
-    var catLabels = document.querySelectorAll('.catalog-label');
-    var catNames = document.querySelectorAll('.catalog-name');
-    [['Card 1 Label','Card 1 Title'],['Card 2 Label','Card 2 Title'],['Card 3 Label','Card 3 Title']]
-    .forEach(function(pair,i){
-      if (catLabels[i] && t[pair[0]]) catLabels[i].textContent = t[pair[0]];
-      if (catNames[i] && t[pair[1]]) catNames[i].textContent = t[pair[1]];
-    });
-    // Features
-    var fIcons = document.querySelectorAll('.feature-icon');
-    var fTitles = document.querySelectorAll('.feature-title');
-    var fDescs = document.querySelectorAll('.feature-desc');
-    for (var fi=1; fi<=4; fi++) {
-      if (fIcons[fi-1] && t['Feature '+fi+' Icon']) fIcons[fi-1].textContent = t['Feature '+fi+' Icon'];
-      if (fTitles[fi-1] && t['Feature '+fi+' Title']) fTitles[fi-1].textContent = t['Feature '+fi+' Title'];
-      if (fDescs[fi-1] && t['Feature '+fi+' Description']) fDescs[fi-1].textContent = t['Feature '+fi+' Description'];
-    }
-    // Testimonial
-    set('.testimonial-quote', t['Quote']);
-    set('.testimonial-author', t['Author']);
-    // Contact
-    var cVals = document.querySelectorAll('.contact-val');
-    if (cVals[0] && t['Location Value']) cVals[0].textContent = t['Location Value'];
-    if (cVals[1] && t['Phone Value']) cVals[1].textContent = t['Phone Value'];
-    // Footer
-    set('.footer-copy', t['Copyright']);
-    var socials = document.querySelectorAll('.social-link');
-    if (socials[0] && t['Instagram Link']) socials[0].href = t['Instagram Link'];
-    if (socials[1] && t['Facebook Link']) socials[1].href = t['Facebook Link'];
-    if (socials[2] && t['WhatsApp Link']) socials[2].href = t['WhatsApp Link'];
-  }
-
-
-  function buildFilters() {
-    var cats = ['all'];
-    allProducts.forEach(function(p){ if (p.category && cats.indexOf(p.category)===-1) cats.push(p.category); });
-    var tabs = document.getElementById('filterTabs');
-    tabs.innerHTML = cats.map(function(c){
-      return '<button class="filter-tab' + (c==='all'?' active':'') + '" data-filter="' + c + '">' + (c==='all'?'All':c) + '</button>';
-    }).join('');
-    tabs.querySelectorAll('.filter-tab').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        tabs.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('active'); });
-        btn.classList.add('active');
-        renderProducts(btn.dataset.filter);
-      });
-    });
-  }
-
-  function renderProducts(filter) {
-    var list = filter==='all' ? allProducts : allProducts.filter(function(p){ return p.category===filter; });
-    var container = document.getElementById('productContainer');
-    // preserve debug panel
-    var dbg = document.getElementById('debugPanel');
-    if (!list.length) {
-      container.innerHTML = '';
-      if (dbg) container.appendChild(dbg);
-      var empty = document.createElement('div');
-      empty.className='products-empty';
-      empty.innerHTML='<strong>Coming Soon</strong>Products in this category will appear here shortly.';
-      container.appendChild(empty);
-      return;
-    }
-    container.innerHTML = '';
-    if (dbg) container.appendChild(dbg);
-    var g = document.createElement('div');
-    g.innerHTML = '<div class="product-grid">' + list.map(function(p,i){ return productCard(p,i); }).join('') + '</div>';
-    container.appendChild(g);
-  }
-
-  // ── PRODUCT CARD ─────────────────────────────────────────
-
-  // ── MODAL ────────────────────────────────────────────────
   function openModal(idx) {
     var p = allProducts[idx];
     modalImages = getImages(p);
@@ -607,7 +468,14 @@
       (p.badge?'<span class="modal-badge">'+p.badge+'</span>':'') +
       (p.category?'<p class="modal-category">&#10022; '+p.category+'</p>':'') +
       '<h2 class="modal-name">'+p.name+'</h2>' +
-      '<p class="modal-price">'+(p.price?(p.price.includes('₹')?p.price:'₹'+p.price):'')+'</p>' +
+      (function(){
+        var pr = formatPrice(p);
+        return '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:24px;">' +
+          '<span class="modal-price" style="margin-bottom:0">' + pr.sp + '</span>' +
+          (pr.mp ? '<span class="modal-mrp">' + pr.mp + '</span>' : '') +
+          (pr.disc ? '<span class="modal-discount">' + pr.disc + '</span>' : '') +
+          '</div>';
+      })() +
       '<div class="modal-divider"></div>' +
       (p.description?'<p class="modal-desc">'+p.description+'</p>':'') +
       '<div class="modal-actions">' +
