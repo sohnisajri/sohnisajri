@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sohni Sajri — Punjabi Elegance Redefined</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>"/>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
@@ -348,7 +349,7 @@
   <div class="footer-bottom">
     <p class="footer-copy">© 2025 Sohni Sajri. All rights reserved.</p>
     <div class="social-links">
-      <a href="#" class="social-link">IG</a><a href="#" class="social-link">FB</a><a href="#" class="social-link">WA</a>
+      <a href="https://www.instagram.com/sohni__sajri?igsh=azVpZXAycWhhNnFz" target="_blank" class="social-link">IG</a><a href="#" class="social-link">FB</a><a href="https://wa.me/919000907999" target="_blank" class="social-link">WA</a>
     </div>
   </div>
 </footer>
@@ -414,7 +415,7 @@
         (p.category?'<p class="product-cat">'+p.category+'</p>':'') +
         '<h3 class="product-name">'+p.name+'</h3>' +
         (p.description?'<p class="product-desc">'+p.description+'</p>':'') +
-        '<div class="product-footer"><span class="product-price">'+(p.price||'')+'</span>' +
+        '<div class="product-footer"><span class="product-price">'+(p.price?(p.price.includes('₹')?p.price:'₹'+p.price):'')+'</span>' +
         '<div class="product-actions">' + amazonBadge + '<span class="btn-whatsapp">View &rarr;</span></div></div>' +
       '</div></div>';
   }
@@ -588,7 +589,8 @@
     var p = allProducts[idx];
     modalImages = getImages(p);
     modalIdx = 0;
-    var msg = encodeURIComponent('Hi! I\'m interested in "' + p.name + '" (' + p.price + '). Please share more details.');
+    var price = p.price ? (p.price.includes('₹') ? p.price : '₹'+p.price) : '';
+    var msg = encodeURIComponent('Hi! I\'m interested in "' + p.name + '" (' + price + '). Please share more details.');
     var waUrl = 'https://wa.me/' + WHATSAPP + '?text=' + msg;
     updateModalImage();
     var thumbsEl = document.getElementById('modalThumbs');
@@ -599,7 +601,7 @@
       (p.badge?'<span class="modal-badge">'+p.badge+'</span>':'') +
       (p.category?'<p class="modal-category">&#10022; '+p.category+'</p>':'') +
       '<h2 class="modal-name">'+p.name+'</h2>' +
-      '<p class="modal-price">'+(p.price||'')+'</p>' +
+      '<p class="modal-price">'+(p.price?(p.price.includes('₹')?p.price:'₹'+p.price):'')+'</p>' +
       '<div class="modal-divider"></div>' +
       (p.description?'<p class="modal-desc">'+p.description+'</p>':'') +
       '<div class="modal-actions">' +
